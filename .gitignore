@@ -11,3 +11,5 @@ venv/
 data/raw/
 node_modules/
 *.db
+minikube-linux-amd64
+kubectl
