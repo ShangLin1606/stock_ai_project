@@ -8,3 +8,8 @@ services:
       - .:/app
     environment:
       - PYTHONUNBUFFERED=1
+      - DB_NAME='stock_db'
+      - DB_USER='postgres'
+      - DB_PASSWORD='P@ssw0rd'
+      - DB_HOST='localhost'
+      - DB_PORT='5432'
