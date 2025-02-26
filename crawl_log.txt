@@ -1,0 +1,4 @@
+Traceback (most recent call last):
+  File "/home/shanglin8471/stock_ai_project/scripts/update_daily_data.py", line 2, in <module>
+    from src.infrastructure.database.pg_handler import PostgresHandler
+ModuleNotFoundError: No module named 'src'

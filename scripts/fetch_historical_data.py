@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def fetch_historical_stock_data(start_date="2010-01-01", end_date="2025-02-24"):
+def fetch_historical_stock_data(start_date="2010-01-01", end_date="2025-02-26"):
     pg = PostgresHandler()
     stocks = pg.get_all_stocks_from_name_df()
     

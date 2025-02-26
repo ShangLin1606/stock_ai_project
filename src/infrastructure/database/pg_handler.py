@@ -19,7 +19,6 @@ class PostgresHandler:
 
     def create_tables(self):
         with self.conn.cursor() as cur:
-            # 股票資訊表
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS stock_info (
                     stock_id VARCHAR(10) PRIMARY KEY,
@@ -27,7 +26,6 @@ class PostgresHandler:
                     industry TEXT
                 );
             """)
-            # 歷史股價表
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS stock_prices (
                     id SERIAL PRIMARY KEY,
@@ -54,9 +52,9 @@ class PostgresHandler:
             self.conn.commit()
 
     def insert_stock_data(self, stock_id, df):
-        # 將 NumPy 類型轉換為 Python 原生類型
+        # 將 numpy 類型轉為 Python 原生類型
         data = [
-            (stock_id, date.strftime('%Y-%m-%d'), float(row['Open'].iloc[0]), float(row['High']),
+            (stock_id, date.strftime('%Y-%m-%d'), float(row['Open'].iloc[0]), float(row['High'].iloc[0]),
              float(row['Low'].iloc[0]), float(row['Close'].iloc[0]), int(row['Volume'].iloc[0]))
             for date, row in df.iterrows()
         ]
