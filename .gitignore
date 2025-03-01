@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.log
+data/raw/*
+data/processed/*
+distilled_report/
+frontend/node_modules/
