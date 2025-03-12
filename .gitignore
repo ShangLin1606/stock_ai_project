@@ -30,3 +30,22 @@ data/processed/*
 # 其他
 *.DS_Store
 neo4j_conf
+
+logstash.db
+stock_env/
+*.so
+*.so.2
+
+# Python 虛擬環境
+stock_env/
+venv/
+env/
+
+# Python 快取
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 其他常見的忽略項目
+.env
+.DS_Store
