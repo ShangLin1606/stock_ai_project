@@ -1,0 +1,15 @@
+pip install -U pip setuptools wheel && pip install packaging six typing_extensions numpy cython
+
+pip install pandas scipy scikit-learn matplotlib seaborn pillow 
+
+pip install transformers tokenizers safetensors accelerate bitsandbytes optimum peft flash-attn xformers einops
+
+pip install fastapi uvicorn flask gunicorn requests aiohttp websockets
+
+pip install pandas-ta yfinance beautifulsoup4 opencv-python-headless tensorflow tensorboard mlflow wandb
+
+pip install pytest black isort flake8 mypy jupyter notebook ipykernel
+
+pip install dagster mlflow ray[all] langchain openai milvus elasticsearch
+
+pip install pytest black isort flake8 mypy jupyter notebook ipykernel h5py

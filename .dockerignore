@@ -1,0 +1,26 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.log
+data/
+.git
+.gitignore
+.env
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.log
+data/
+.git
+.gitignore
+.env
+requirements.txt  # 排除完整清單，只使用 dagster_requirements.txtneo4j_conf
+neo4j_conf

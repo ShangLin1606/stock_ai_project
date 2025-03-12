@@ -1,0 +1,24 @@
+# Dagster 核心套件
+dagster
+dagster-webserver  # Web UI
+dagster-postgres   # PostgreSQL 儲存元數據
+dagster-celery    # 可選：支援分散式執行（若計畫使用）
+dagster-graphql   # GraphQL API
+
+# Dagster 執行所需依賴
+psycopg2-binary   # PostgreSQL 連接
+python-dotenv      # 環境變數管理
+packaging           # 解決依賴解析問題
+
+# Day 4 特定功能依賴
+yfinance           # 每日股價更新
+requests          # TWSE API 請求
+pandas              # 數據處理
+pymongo           # MongoDB 存儲新聞
+elasticsearch      # Elasticsearch 索引新聞
+python-logstash-async  # 日誌輸出到 Elasticsearch
+
+aiohttp
+pymilvus
+sentence_transformers
+

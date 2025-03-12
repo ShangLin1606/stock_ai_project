@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - REACT_APP_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    volumes:
+      - .:/app
+    networks:
+      - stock-ai-network
+
+networks:
+  stock-ai-network:
+    external: true

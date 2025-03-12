@@ -1,3 +1,8 @@
+# stock_ai_project/.gitignore
+# 環境變數
+.env
+
+# Python 快取與依賴
 __pycache__/
 *.pyc
 *.pyo
@@ -5,8 +10,23 @@ __pycache__/
 .Python
 env/
 venv/
+.env/
+*.egg-info/
+dist/
+build/
+
+# Docker 相關
 *.log
-data/raw/*
+docker-compose.override.yml
+
+# 數據檔案
 data/processed/*
-distilled_report/
-frontend/node_modules/
+!data/raw/name_df.csv
+
+# IDE 設定
+.idea/
+.vscode/
+
+# 其他
+*.DS_Store
+neo4j_conf

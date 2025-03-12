@@ -1,58 +1,253 @@
+version: '3.8'
+
 services:
+  neo4j:
+    image: neo4j:latest
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}  # Neo4j 認證
+      NEO4J_server_http_enabled: "true"            # 啟用 HTTP 伺服器
+      NEO4J_server_http_listen__address: "0.0.0.0:7474"  # HTTP 監聽地址
+      NEO4J_server_bolt_listen__address: "0.0.0.0:7687"  # Bolt 監聽地址
+    ports:
+      - "7474:7474"  # HTTP 端口
+      - "7687:7687"  # Bolt 端口
+    volumes:
+      - neo4j_data:/data            # 持久化 Neo4j 數據
+      - ./neo4j_conf:/var/lib/neo4j/conf  # 自訂設定
+
   postgres:
     image: postgres:14
     environment:
-      POSTGRES_USER: ${PG_USER}
-      POSTGRES_PASSWORD: ${PG_PASSWORD}
-      POSTGRES_DB: ${PG_DB}
+      POSTGRES_USER: ${DB_USER}       # PostgreSQL 用戶名
+      POSTGRES_PASSWORD: ${DB_PASSWORD}  # 密碼
+      POSTGRES_DB: ${DB_NAME}         # 資料庫名稱
     ports:
-      - "5432:5432"
+      - "5432:5432"                   # 映射 PostgreSQL 端口
     volumes:
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data  # 持久化資料
 
   mongodb:
     image: mongo:6
     ports:
-      - "27017:27017"
+      - "27017:27017"                 # 映射 MongoDB 端口
     volumes:
-      - mongo_data:/data/db
-
-  milvus:
-    image: milvusdb/milvus:2.5-20250301-3f76e1c6-gpu-amd64
-    ports:
-      - "19530:19530"
-    volumes:
-      - milvus_data:/var/lib/milvus
-
-  neo4j:
-    image: neo4j:latest
-    environment:
-      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
-    ports:
-      - "7687:7687"
-    volumes:
-      - neo4j_data:/data
+      - mongo_data:/data/db           # 持久化新聞數據
 
   elasticsearch:
     image: elasticsearch:8.17.1
     environment:
-      - discovery.type=single-node
+      - discovery.type=single-node    # 單節點模式
+      - xpack.security.enabled=true   # 啟用安全設定
+      - ELASTIC_USERNAME=${ES_USERNAME}  # Elasticsearch 用戶名
+      - ELASTIC_PASSWORD=${ES_PASSWORD}  # 密碼
     ports:
-      - "9200:9200"
+      - "9200:9200"                   # 映射 Elasticsearch 端口
     volumes:
-      - es_data:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data  # 持久化資料
+    networks:
+      - stock-ai-network              # 使用自訂網絡
+
+  logstash:
+    image: logstash:8.17.1
+    ports:
+      - "5044:5044"                   # 映射 Logstash 端口
+    volumes:
+      - ./logstash.conf:/usr/share/logstash/pipeline/logstash.conf  # Logstash 設定
+    environment:
+      - ELASTIC_USERNAME=${ES_USERNAME}  # Elasticsearch 用戶名
+      - ELASTIC_PASSWORD=${ES_PASSWORD}  # 密碼
+    depends_on:
+      - elasticsearch                # 依賴 Elasticsearch
+    networks:
+      - stock-ai-network             # 使用自訂網絡
+
+  kibana:
+    image: kibana:8.17.1
+    ports:
+      - "5601:5601"                  # 映射 Kibana 端口
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200  # Elasticsearch 主機
+      - ELASTICSEARCH_USERNAME=${KIBANA_USERNAME}      # Kibana 用戶名
+      - ELASTICSEARCH_PASSWORD=${KIBANA_PASSWORD}      # 密碼
+      - xpack.encryptedSavedObjects.encryptionKey=your-32-char-key-here-1234567890abcdef  # 加密金鑰
+      - xpack.reporting.encryptionKey=your-32-char-key-here-1234567890abcdef             # 報告加密金鑰
+    depends_on:
+      - elasticsearch                # 依賴 Elasticsearch
+    mem_limit: 1g                    # 記憶體限制
 
   redis:
     image: redis:7
     ports:
-      - "6379:6379"
+      - "6379:6379"                  # 映射 Redis 端口
     volumes:
-      - redis_data:/data
+      - redis_data:/data             # 持久化緩存數據
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.0
+    volumes:
+      - /etc/localtime:/etc/localtime:ro  # 同步容器時間
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls=http://0.0.0.0:2379
+    ports:
+      - "2379:2379"                  # 映射 etcd 端口
+
+  minio:
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"                  # MinIO API 端口
+      - "9001:9001"                  # MinIO 控制台端口
+    environment:
+      - MINIO_ROOT_USER=minioadmin   # MinIO 用戶名
+      - MINIO_ROOT_PASSWORD=minioadmin  # 密碼
+
+  milvus-standalone:
+    image: milvusdb/milvus:v2.3.5
+    volumes:
+      - /etc/localtime:/etc/localtime:ro  # 同步容器時間
+    command: ["milvus", "run", "standalone"]  # 以獨立模式運行
+    ports:
+      - "19530:19530"                # Milvus 服務端口
+      - "9091:9091"                  # Milvus gRPC 端口
+    depends_on:
+      - etcd                        # 依賴 etcd
+      - minio                       # 依賴 MinIO
+    environment:
+      - ETCD_ENDPOINTS=etcd:2379    # etcd 地址
+      - MINIO_ADDRESS=minio:9000    # MinIO 地址
+
+  dagster-user-code:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile  # 自訂 Dockerfile
+    command: dagster api grpc -h 0.0.0.0 -p 4000 -f pipelines/assets/stock_assets.py -f pipelines/schedules/daily_schedule.py
+    ports:
+      - "4000:4000"                  # 映射 Dagster gRPC 端口
+    environment:
+      - DAGSTER_POSTGRES_USER=${DB_USER}  # Dagster PostgreSQL 用戶名
+      - DAGSTER_POSTGRES_PASSWORD=${DB_PASSWORD}  # 密碼
+      - DAGSTER_POSTGRES_DB=${DB_NAME}    # 資料庫名稱
+      - DAGSTER_POSTGRES_HOST=postgres    # 主機
+      - DAGSTER_POSTGRES_PORT=5432        # 端口
+      - DAGSTER_HOME=/opt/dagster/dagster_home  # Dagster 家目錄
+      - DOCKER_COMPOSE=true               # Docker Compose 標誌
+    volumes:
+      - .:/opt/dagster/app                # 程式碼映射
+      - dagster_home:/opt/dagster/dagster_home  # 持久化資料
+    depends_on:
+      - postgres                         # 依賴 PostgreSQL
+
+  dagster-webserver:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: dagster-webserver -h 0.0.0.0 -p 3100 -w workspace.yaml
+    ports:
+      - "3100:3100"                  # 映射 Dagster Web 介面
+    environment:
+      - DAGSTER_POSTGRES_USER=${DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DB_NAME}
+      - DAGSTER_POSTGRES_HOST=postgres
+      - DAGSTER_POSTGRES_PORT=5432
+      - DAGSTER_HOME=/opt/dagster/dagster_home
+      - DOCKER_COMPOSE=true
+    volumes:
+      - .:/opt/dagster/app
+      - dagster_home:/opt/dagster/dagster_home
+    depends_on:
+      - postgres
+      - dagster-user-code
+
+  dagster-daemon:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    command: dagster-daemon run -w workspace.yaml
+    environment:
+      - DAGSTER_POSTGRES_USER=${DB_USER}
+      - DAGSTER_POSTGRES_PASSWORD=${DB_PASSWORD}
+      - DAGSTER_POSTGRES_DB=${DB_NAME}
+      - DAGSTER_POSTGRES_HOST=postgres
+      - DAGSTER_POSTGRES_PORT=5432
+      - DAGSTER_HOME=/opt/dagster/dagster_home
+      - DOCKER_COMPOSE=true
+    volumes:
+      - .:/opt/dagster/app
+      - dagster_home:/opt/dagster/dagster_home
+    depends_on:
+      - postgres
+      - dagster-user-code
+
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile         # 自訂後端 Dockerfile
+    ports:
+      - "8000:8000"                  # 映射後端 API 端口
+    environment:
+      - DB_HOST=postgres             # PostgreSQL 主機
+      - DB_PORT=5432                 # 端口
+      - DB_NAME=${DB_NAME}           # 資料庫名稱
+      - DB_USER=${DB_USER}           # 用戶名
+      - DB_PASSWORD=${DB_PASSWORD}   # 密碼
+      - ES_USERNAME=${ES_USERNAME}   # Elasticsearch 用戶名
+      - ES_PASSWORD=${ES_PASSWORD}   # 密碼
+      - REDIS_HOST=redis             # Redis 主機
+      - MONGO_HOST=mongodb           # MongoDB 主機
+      - MILVUS_HOST=milvus-standalone  # Milvus 主機
+      - NEO4J_HOST=neo4j             # Neo4j 主機
+      - NEO4J_USER=${NEO4J_USER}     # Neo4j 用戶名
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}  # 密碼
+      - XAI_API_KEY=${XAI_API_KEY} # XAI API 金鑰
+    depends_on:
+      - postgres                    # 依賴 PostgreSQL
+      - elasticsearch               # 依賴 Elasticsearch
+      - redis                       # 依賴 Redis
+      - mongodb                     # 依賴 MongoDB
+      - milvus-standalone           # 依賴 Milvus
+      - neo4j                       # 依賴 Neo4j
+    volumes:
+      - ./api:/app                  # 程式碼映射
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile        # 自訂前端 Dockerfile
+    ports:
+      - "3001:3001"                 # 映射前端端口（避免與 Grafana 衝突）
+    environment:
+      - REACT_APP_API_URL=http://backend:8000  # 後端 API 地址
+    depends_on:
+      - backend                    # 依賴後端
+    volumes:
+      - ./frontend:/app            # 程式碼映射
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"                # 映射 Prometheus 端口
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml  # Prometheus 設定檔案
+    depends_on:
+      - frontend                  # 依賴前端（監控前端服務）
+      - backend                   # 依賴後端（監控後端服務）
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"                # 映射 Grafana 端口（調整為 3000 以避免與前端衝突）
+    depends_on:
+      - prometheus                # 依賴 Prometheus
 
 volumes:
-  pg_data:
-  mongo_data:
-  milvus_data:
-  neo4j_data:
-  es_data:
-  redis_data:
+  pg_data:                        # PostgreSQL 資料卷
+  mongo_data:                     # MongoDB 資料卷
+  milvus_data:                    # Milvus 資料卷
+  neo4j_data:                     # Neo4j 資料卷
+  es_data:                        # Elasticsearch 資料卷
+  redis_data:                     # Redis 資料卷
+  dagster_home:                   # Dagster 資料卷
+
+networks:
+  stock-ai-network:
+    driver: bridge                # 自訂橋接網絡

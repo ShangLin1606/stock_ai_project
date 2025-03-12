@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ES_USERNAME=${ES_USERNAME}
+      - ES_PASSWORD=${ES_PASSWORD}
+      - REDIS_HOST=redis
+      - MONGO_HOST=mongodb
+      - MILVUS_HOST=milvus-standalone
+      - NEO4J_HOST=neo4j
+      - NEO4J_USER=${NEO4J_USER}
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      - XAI_API_KEY=your_xai_api_key
+    depends_on:
+      - postgres
+      - elasticsearch
+      - redis
+      - mongodb
+      - milvus-standalone
+      - neo4j
+    volumes:
+      - .:/app
+    networks:
+      - stock-ai-network
+
+networks:
+  stock-ai-network:
+    external: true
